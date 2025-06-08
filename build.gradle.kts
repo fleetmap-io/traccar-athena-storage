@@ -18,6 +18,11 @@ repositories {
 
 dependencies {
     implementation(":tracker-server")
+    implementation("org.apache.avro:avro:1.11.4")
+    implementation("org.apache.parquet:parquet-avro:1.15.2")
+    implementation("org.apache.hadoop:hadoop-common:3.4.0")
+    implementation("org.apache.hadoop:hadoop-mapreduce-client-core:3.3.6")
+    implementation("software.amazon.awssdk:s3:2.25.17")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
