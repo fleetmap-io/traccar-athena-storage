@@ -2,7 +2,6 @@ package org.fleetmap;
 
 import org.junit.jupiter.api.Test;
 import org.traccar.model.Position;
-import software.amazon.awssdk.services.s3.S3Client;
 
 import java.time.Instant;
 
