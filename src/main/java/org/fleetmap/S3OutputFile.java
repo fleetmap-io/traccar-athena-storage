@@ -37,13 +37,13 @@ public class S3OutputFile implements OutputFile {
             }
 
             @Override
-            public void write(int b) throws IOException {
+            public void write(int b) {
                 outputStream.write(b);
                 position++;
             }
 
             @Override
-            public void write(byte[] b, int off, int len) throws IOException {
+            public void write(byte[] b, int off, int len) {
                 outputStream.write(b, off, len);
                 position += len;
             }
