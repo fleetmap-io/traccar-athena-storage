@@ -100,13 +100,15 @@ public class Athena {
     }
 
     public static void printQueryResults(String queryExecutionId) {
-        AthenaClient client = AthenaClient.create();
+        GetQueryResultsIterable resultsIterable;
+        try (AthenaClient client = AthenaClient.create()) {
 
-        GetQueryResultsRequest resultsRequest = GetQueryResultsRequest.builder()
-                .queryExecutionId(queryExecutionId)
-                .build();
+            GetQueryResultsRequest resultsRequest = GetQueryResultsRequest.builder()
+                    .queryExecutionId(queryExecutionId)
+                    .build();
 
-        GetQueryResultsIterable resultsIterable = client.getQueryResultsPaginator(resultsRequest);
+            resultsIterable = client.getQueryResultsPaginator(resultsRequest);
+        }
 
         for (GetQueryResultsResponse results : resultsIterable) {
             for (Row row : results.resultSet().rows()) {
