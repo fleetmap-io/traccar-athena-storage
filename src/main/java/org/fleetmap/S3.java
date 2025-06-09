@@ -5,11 +5,11 @@ import org.traccar.model.Position;
 import java.util.ArrayList;
 import java.util.List;
 
-public class S3Writer {
+public class S3 {
     private final List<Position> buffer = new ArrayList<>();
     private final int flushThreshold;
 
-    public S3Writer(int flushThreshold) {
+    public S3(int flushThreshold) {
         this.flushThreshold = flushThreshold;
     }
 

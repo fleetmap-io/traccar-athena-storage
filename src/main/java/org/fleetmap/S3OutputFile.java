@@ -8,33 +8,19 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
 
+public class S3OutputFile implements OutputFile {
 
-public class S3StreamingOutputFile implements OutputFile {
-    private static final Properties properties = new Properties();
-    static {
-        try (InputStream input = S3StreamingOutputFile.class.getClassLoader().getResourceAsStream("athena-storage.properties")) {
-            if (input != null) {
-                properties.load(input);
-            } else {
-                throw new RuntimeException("config.properties not found in classpath");
-            }
-        } catch (IOException ex) {
-            throw new RuntimeException("Failed to load config.properties", ex);
-        }
-    }
     private static final S3Client s3Client = S3Client.builder()
             //.region(Region.of("us-east-1")) // Set your region
             //.credentialsProvider(DefaultCredentialsProvider.create())
             // .endpointOverride(URI.create("http://localhost:4566")) // Uncomment for local testing (e.g., LocalStack)
             .build();
 
-    String bucket = (String)properties.get("s3.bucket");
+    String bucket = Config.getBucket();
     private final String key;
 
-    public S3StreamingOutputFile(String key) {
+    public S3OutputFile(String key) {
         this.key = key;
     }
 

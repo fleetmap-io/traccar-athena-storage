@@ -30,7 +30,7 @@ public class ParquetWriterUtil {
 
     public static void writeToS3(List<Position> positions) {
         try {
-            OutputFile outputFile = new S3StreamingOutputFile("your-key.parquet");
+            OutputFile outputFile = new S3OutputFile("your-key.parquet");
             ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(outputFile)
                     .withSchema(SCHEMA)
                     .withCompressionCodec(CompressionCodecName.SNAPPY)
