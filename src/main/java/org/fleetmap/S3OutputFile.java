@@ -65,7 +65,7 @@ public class S3OutputFile implements OutputFile {
     }
 
     @Override
-    public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
+    public PositionOutputStream createOrOverwrite(long blockSizeHint) {
         return create(blockSizeHint);
     }
 
