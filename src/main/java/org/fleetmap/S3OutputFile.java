@@ -11,11 +11,7 @@ import java.io.IOException;
 
 public class S3OutputFile implements OutputFile {
 
-    private static final S3Client s3Client = S3Client.builder()
-            //.region(Region.of("us-east-1")) // Set your region
-            //.credentialsProvider(DefaultCredentialsProvider.create())
-            // .endpointOverride(URI.create("http://localhost:4566")) // Uncomment for local testing (e.g., LocalStack)
-            .build();
+    private static final S3Client s3Client = S3Client.builder().build();
 
     String bucket = Config.getBucket();
     private final String key;

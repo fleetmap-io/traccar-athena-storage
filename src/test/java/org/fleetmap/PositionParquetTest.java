@@ -12,7 +12,7 @@ public class PositionParquetTest {
     @Test
     public void testS3Writer() throws InterruptedException {
         Position position = new Position();
-        position.setDeviceId(424);
+        position.setDeviceId(4240);
         position.setLatitude(38.7169);
         position.setLongitude(-9.1399);
         position.setSpeed(66.0);
@@ -22,8 +22,8 @@ public class PositionParquetTest {
         writer.write(position);
 
         Athena.createTableIfNotExists();
-
-        waitForQueryToComplete(Athena.startQueryExecution("Select * from " + Config.getTable() + " where deviceid_shard=424"));
-
+        String qId = Athena.startQueryExecution("Select * from " + Config.getTable() + " where deviceid_shard='424'");
+        waitForQueryToComplete(qId);
+        Athena.printQueryResults(qId);
     }
 }

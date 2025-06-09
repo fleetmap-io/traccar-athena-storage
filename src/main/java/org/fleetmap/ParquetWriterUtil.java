@@ -19,7 +19,7 @@ public class ParquetWriterUtil {
       "name": "Position",
       "fields": [
         { "name": "id", "type": "long" },
-        { "name": "deviceId", "type": "string" },
+        { "name": "deviceId", "type": "long" },
         { "name": "latitude", "type": "double" },
         { "name": "longitude", "type": "double" },
         { "name": "fixTime", "type": { "type": "long", "logicalType": "timestamp-millis" } },
@@ -29,8 +29,21 @@ public class ParquetWriterUtil {
     """);
 
     public static void writeToS3(List<Position> positions) {
+        if (positions == null || positions.isEmpty()) {
+            return;
+        }
+
         try {
-            OutputFile outputFile = new S3OutputFile("your-key.parquet");
+            Position sample = positions.getFirst();
+
+            long deviceId = sample.getDeviceId();
+            long shard = deviceId / 10;
+
+            // Partitioned path format: deviceid_shard=xxx/fixdate=yyyy-MM-dd/
+            String fixDate = new java.text.SimpleDateFormat("yyyy-MM-dd").format(sample.getFixTime());
+            String key = String.format("deviceid_shard=%d/fixdate=%s/%d.parquet", shard, fixDate, deviceId);
+
+            OutputFile outputFile = new S3OutputFile(key);
             ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(outputFile)
                     .withSchema(SCHEMA)
                     .withCompressionCodec(CompressionCodecName.SNAPPY)
@@ -49,6 +62,7 @@ public class ParquetWriterUtil {
 
             writer.close();
         } catch (Exception e) {
+            //noinspection CallToPrintStackTrace
             e.printStackTrace();
         }
     }

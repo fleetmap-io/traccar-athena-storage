@@ -1,29 +1,28 @@
 package org.fleetmap;
 import software.amazon.awssdk.services.athena.AthenaClient;
 import software.amazon.awssdk.services.athena.model.*;
+import software.amazon.awssdk.services.athena.paginators.GetQueryResultsIterable;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketConfiguration;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 
 public class Athena {
     private static final AthenaClient athena = AthenaClient.create();
+    private static final QueryExecutionContext context = QueryExecutionContext.builder()
+            .database(Config.getDatabase())
+            .build();
+
+    private static final ResultConfiguration resultConfig = ResultConfiguration.builder()
+            .outputLocation("s3://" + Config.getBucket() + "/query_results")
+            .build();
 
     public static String startQueryExecution(String query) {
         System.out.println(query);
-        QueryExecutionContext context = QueryExecutionContext.builder()
-                .database(Config.getDatabase())
-                .build();
-
-        ResultConfiguration resultConfig = ResultConfiguration.builder()
-                .outputLocation("s3://" + Config.getBucket())
-                .build();
-
         StartQueryExecutionRequest request = StartQueryExecutionRequest.builder()
                 .queryString(query)
                 .queryExecutionContext(context)
                 .resultConfiguration(resultConfig)
                 .build();
-
         StartQueryExecutionResponse response = athena.startQueryExecution(request);
         return response.queryExecutionId();
     }
@@ -36,14 +35,12 @@ public class Athena {
         while (true) {
             GetQueryExecutionResponse response = athena.getQueryExecution(request);
             QueryExecutionState state = response.queryExecution().status().state();
-
             if (state == QueryExecutionState.SUCCEEDED) {
                 return;
             } else if (state == QueryExecutionState.FAILED || state == QueryExecutionState.CANCELLED) {
                 throw new RuntimeException("Athena query failed: " + response.queryExecution().status().stateChangeReason());
             }
-
-            Thread.sleep(1000); // Polling interval
+            Thread.sleep(100);
         }
     }
 
@@ -102,4 +99,24 @@ public class Athena {
         """, tableName, bucketName, bucketName);
     }
 
+    public static void printQueryResults(String queryExecutionId) {
+        AthenaClient client = AthenaClient.create();
+
+        GetQueryResultsRequest resultsRequest = GetQueryResultsRequest.builder()
+                .queryExecutionId(queryExecutionId)
+                .build();
+
+        GetQueryResultsIterable resultsIterable = client.getQueryResultsPaginator(resultsRequest);
+
+        for (GetQueryResultsResponse results : resultsIterable) {
+            for (Row row : results.resultSet().rows()) {
+                System.out.println(
+                    row.data().stream()
+                            .map(Datum::varCharValue)
+                            .reduce((a, b) -> a + " | " + b)
+                            .orElse("")
+                );
+            }
+        }
+    }
 }
