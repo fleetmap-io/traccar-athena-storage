@@ -13,8 +13,6 @@ import static org.fleetmap.PositionConverter.SCHEMA;
 import static org.fleetmap.PositionConverter.toGenericRecord;
 
 public class ParquetWriter {
-
-    private static final java.text.SimpleDateFormat DATE_FORMAT = new java.text.SimpleDateFormat("yyyy-MM-dd");
     public static void writeToS3(List<Position> positions, PartitionKey partitionKey) {
         String key = String.format("deviceid_shard=%d/date=%s/%d.parquet", partitionKey.getShard(), partitionKey.getDate(), System.currentTimeMillis());
         OutputFile outputFile = new S3OutputFile(key);

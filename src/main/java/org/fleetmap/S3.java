@@ -19,7 +19,7 @@ public class S3 implements AutoCloseable {
 
     public synchronized void write(Position position) {
         PartitionKey key = new PartitionKey(position.getDeviceId() / 10, DATE_FORMAT.format(position.getFixTime()));
-        buffers.computeIfAbsent(key, k -> new ArrayList<>()).add(position);
+        buffers.computeIfAbsent(key, _ -> new ArrayList<>()).add(position);
     }
 
     public void flushAll() {

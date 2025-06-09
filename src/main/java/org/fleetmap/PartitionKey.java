@@ -22,8 +22,7 @@ public class PartitionKey {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof PartitionKey)) return false;
-        PartitionKey that = (PartitionKey) o;
+        if (!(o instanceof PartitionKey that)) return false;
         return shard == that.shard && date.equals(that.date);
     }
 

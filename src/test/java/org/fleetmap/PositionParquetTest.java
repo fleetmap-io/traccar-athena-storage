@@ -28,27 +28,28 @@ public class PositionParquetTest {
         long shard = deviceId / 10;
         String prefix = String.format("deviceid_shard=%d/date=%s/", shard, date);
 
-        S3Client s3 = S3Client.create();
+        try (S3Client s3 = S3Client.create()) {
 
-        ListObjectsV2Request listReq = ListObjectsV2Request.builder()
-                .bucket(Config.getBucket())
-                .prefix(prefix)
-                .build();
-
-        ListObjectsV2Response listRes = s3.listObjectsV2(listReq);
-        List<S3Object> objects = listRes.contents();
-
-        if (!objects.isEmpty()) {
-            DeleteObjectsRequest deleteReq = DeleteObjectsRequest.builder()
+            ListObjectsV2Request listReq = ListObjectsV2Request.builder()
                     .bucket(Config.getBucket())
-                    .delete(Delete.builder()
-                            .objects(objects.stream()
-                                    .map(o -> ObjectIdentifier.builder().key(o.key()).build())
-                                    .toList())
-                            .build())
+                    .prefix(prefix)
                     .build();
 
-            s3.deleteObjects(deleteReq);
+            ListObjectsV2Response listRes = s3.listObjectsV2(listReq);
+            List<S3Object> objects = listRes.contents();
+
+            if (!objects.isEmpty()) {
+                DeleteObjectsRequest deleteReq = DeleteObjectsRequest.builder()
+                        .bucket(Config.getBucket())
+                        .delete(Delete.builder()
+                                .objects(objects.stream()
+                                        .map(o -> ObjectIdentifier.builder().key(o.key()).build())
+                                        .toList())
+                                .build())
+                        .build();
+
+                s3.deleteObjects(deleteReq);
+            }
         }
     }
 
