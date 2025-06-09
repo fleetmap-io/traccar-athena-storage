@@ -1,10 +1,16 @@
 package org.fleetmap;
+import org.traccar.model.Position;
 import software.amazon.awssdk.services.athena.AthenaClient;
 import software.amazon.awssdk.services.athena.model.*;
 import software.amazon.awssdk.services.athena.paginators.GetQueryResultsIterable;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketConfiguration;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.fleetmap.PositionConverter.toPosition;
 
 public class Athena {
     private static final AthenaClient athena = AthenaClient.create();
@@ -65,6 +71,7 @@ public class Athena {
         queryExecutionId = startQueryExecution(generateCreateTableStatement(Config.getBucket(), Config.getTable()));
         waitForQueryToComplete(queryExecutionId);
     }
+
     public static String generateCreateTableStatement(String bucketName, String tableName) {
         return String.format("""
             CREATE EXTERNAL TABLE IF NOT EXISTS %s (
@@ -77,48 +84,41 @@ public class Athena {
             )
             PARTITIONED BY (
               deviceid_shard STRING,
-              year STRING,
-              month STRING,
-              day STRING
+              date STRING
             )
             STORED AS PARQUET
             LOCATION 's3://%s/'
             TBLPROPERTIES (
               'projection.enabled' = 'true',
               'projection.deviceid_shard.type' = 'injected',
-              'projection.year.type' = 'integer',
-              'projection.year.range' = '2000,2030',
-              'projection.month.type' = 'integer',
-              'projection.month.range' = '1,12',
-              'projection.month.digits' = '2',
-              'projection.day.type' = 'integer',
-              'projection.day.range' = '1,31',
-              'projection.day.digits' = '2',
-              'storage.location.template' = 's3://%s/deviceid_shard=${deviceid_shard}/year=${year}/month=${month}/day=${day}/'
+              'projection.date.type' = 'date',
+              'projection.date.range' = '2000-01-01,NOW',
+              'projection.date.format' = 'yyyy-MM-dd',
+              'storage.location.template' = 's3://%s/deviceid_shard=${deviceid_shard}/date=${date}/'
             );
         """, tableName, bucketName, bucketName);
     }
 
-    public static void printQueryResults(String queryExecutionId) {
+    public static List<Position> getResult(String queryExecutionId) {
         GetQueryResultsIterable resultsIterable;
         try (AthenaClient client = AthenaClient.create()) {
-
             GetQueryResultsRequest resultsRequest = GetQueryResultsRequest.builder()
                     .queryExecutionId(queryExecutionId)
                     .build();
 
             resultsIterable = client.getQueryResultsPaginator(resultsRequest);
-        }
-
-        for (GetQueryResultsResponse results : resultsIterable) {
-            for (Row row : results.resultSet().rows()) {
-                System.out.println(
-                    row.data().stream()
-                            .map(Datum::varCharValue)
-                            .reduce((a, b) -> a + " | " + b)
-                            .orElse("")
-                );
+            List<Position> positions = new ArrayList<>();
+            boolean isFirstRow = true;
+            for (GetQueryResultsResponse results : resultsIterable) {
+                for (Row row : results.resultSet().rows()) {
+                    if (isFirstRow) {
+                        isFirstRow = false;
+                        continue;
+                    }
+                    positions.add(toPosition(row.data()));
+                }
             }
+            return positions;
         }
     }
 }

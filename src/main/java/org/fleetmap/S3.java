@@ -2,28 +2,51 @@ package org.fleetmap;
 
 import org.traccar.model.Position;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.*;
 
-public class S3 {
-    private final List<Position> buffer = new ArrayList<>();
-    private final int flushThreshold;
+public class S3 implements AutoCloseable {
 
-    public S3(int flushThreshold) {
-        this.flushThreshold = flushThreshold;
+    private final Map<PartitionKey, List<Position>> buffers = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+
+    public S3() {
+        int flushIntervalSeconds = Config.getFlushInterval();
+        scheduler.scheduleAtFixedRate(this::flushAll, flushIntervalSeconds, flushIntervalSeconds, TimeUnit.SECONDS);
     }
 
     public synchronized void write(Position position) {
-        buffer.add(position);
-        if (buffer.size() >= flushThreshold) {
-            flush();
+        PartitionKey key = new PartitionKey(position.getDeviceId() / 10, DATE_FORMAT.format(position.getFixTime()));
+        buffers.computeIfAbsent(key, k -> new ArrayList<>()).add(position);
+    }
+
+    public void flushAll() {
+        Map<PartitionKey, List<Position>> toFlush = new HashMap<>();
+
+        synchronized (this) {
+            for (Map.Entry<PartitionKey, List<Position>> entry : buffers.entrySet()) {
+                List<Position> buffer = entry.getValue();
+                if (!buffer.isEmpty()) {
+                    toFlush.put(entry.getKey(), new ArrayList<>(buffer));
+                    buffer.clear();
+                }
+            }
+        }
+
+        for (Map.Entry<PartitionKey, List<Position>> entry : toFlush.entrySet()) {
+            ParquetWriter.writeToS3(entry.getValue(), entry.getKey());
         }
     }
 
-    public synchronized void flush() {
-        if (buffer.isEmpty()) return;
-        List<Position> batch = new ArrayList<>(buffer);
-        buffer.clear();
-        ParquetWriterUtil.writeToS3(batch);
+    @Override
+    public void close() {
+        scheduler.shutdown();
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            scheduler.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException ignored) {}
+        flushAll();
     }
 }

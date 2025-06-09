@@ -29,4 +29,9 @@ public class Config {
     public static String getDatabase() {
         return properties.getProperty("database", "traccar_positions");
     }
+
+    // seconds
+    public static int getFlushInterval() {
+        return 1;
+    }
 }
