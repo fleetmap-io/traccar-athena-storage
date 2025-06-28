@@ -75,12 +75,23 @@ public class Athena {
     public static String generateCreateTableStatement(String bucketName, String tableName) {
         return String.format("""
             CREATE EXTERNAL TABLE IF NOT EXISTS %s (
-              id BIGINT,
-              deviceid BIGINT,
-              fixtime TIMESTAMP,
-              latitude DOUBLE,
-              longitude DOUBLE,
-              speed DOUBLE
+                id BIGINT,
+                deviceid BIGINT,
+                protocol STRING,
+                servertime TIMESTAMP,
+                devicetime TIMESTAMP,
+                fixtime TIMESTAMP,
+                valid BOOLEAN,
+                latitude DOUBLE,
+                longitude DOUBLE,
+                altitude DOUBLE,
+                speed DOUBLE,
+                course DOUBLE,
+                address STRING,
+                accuracy DOUBLE,
+                network STRING,
+                geofenceids STRING,
+                attributes STRING
             )
             PARTITIONED BY (
               deviceid_shard STRING,
