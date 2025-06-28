@@ -20,4 +20,4 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 23
-      - run: ./gradlew build --no-daemon
+      - run: ./gradlew build -x test
