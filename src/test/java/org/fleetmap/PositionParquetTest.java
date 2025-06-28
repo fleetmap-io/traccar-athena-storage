@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.fleetmap.Athena.waitForQueryToComplete;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PositionParquetTest {
 
@@ -21,15 +22,14 @@ public class PositionParquetTest {
 
     @BeforeEach
     public void setup() {
-        deleteKeysForTest(DEVICE_ID, testDate);
+        deleteKeysForTest(DEVICE_ID);
     }
 
-    public static void deleteKeysForTest(long deviceId, String date) {
+    public static void deleteKeysForTest(long deviceId) {
         long shard = deviceId / 10;
-        String prefix = String.format("deviceid_shard=%d/date=%s/", shard, date);
+        String prefix = String.format("deviceid_shard=%d", shard);
 
         try (S3Client s3 = S3Client.create()) {
-
             ListObjectsV2Request listReq = ListObjectsV2Request.builder()
                     .bucket(Config.getBucket())
                     .prefix(prefix)
@@ -64,9 +64,17 @@ public class PositionParquetTest {
         position.setSpeed(66.0);
         position.setFixTime(java.util.Date.from(Instant.now()));
 
+        Position position2 = new Position();
+        position2.setDeviceId(DEVICE_ID);
+        position2.setLatitude(37.7169);
+        position2.setLongitude(-8.1399);
+        position2.setSpeed(50.0);
+        position2.setFixTime(java.util.Date.from(Instant.parse("2025-06-27T12:01:00Z")));
+
+
         try (S3 writer = new S3()) {
             writer.write(position);
-            writer.write(position);
+            writer.write(position2);
         }
 
         String qId = Athena.startQueryExecution(String.format("""
@@ -75,9 +83,43 @@ public class PositionParquetTest {
         ));
         waitForQueryToComplete(qId);
         List<Position> positions = Athena.getResult(qId);
-        assertEquals(2, positions.size());
+
+        assertEquals(1, positions.size());
         assertEquals(position.getLatitude(), positions.getFirst().getLatitude());
         assertEquals(position.getLongitude(), positions.getFirst().getLongitude());
         assertEquals(position.getDeviceId(), positions.getFirst().getDeviceId());
+
+        qId = Athena.startQueryExecution(String.format("""
+            Select * from %s where deviceid_shard='0' and date between '2025-06-27' and '%s' and deviceId=%d
+            """, Config.getTable(), testDate, DEVICE_ID
+        ));
+        waitForQueryToComplete(qId);
+        positions = Athena.getResult(qId);
+        assertTrue(positions.size() > 1);
+        for (Position p : positions) {
+            System.out.printf("Queried position: id=%d, lat=%.6f, lon=%.6f, time=%s%n",
+                    p.getDeviceId(),
+                    p.getLatitude(),
+                    p.getLongitude(),
+                    p.getFixTime()
+            );
+        }
+
+        qId = Athena.startQueryExecution(String.format("""
+            Select * from %s where deviceid_shard='0' and date between '2025-06-27' and '%s' and deviceId=%d
+            AND fixTime BETWEEN TIMESTAMP '2025-06-27 12:01:00' AND TIMESTAMP '2025-06-27 23:59:59'
+            """, Config.getTable(), testDate, DEVICE_ID
+        ));
+        waitForQueryToComplete(qId);
+        positions = Athena.getResult(qId);
+        assertEquals(1, positions.size());
+        for (Position p : positions) {
+            System.out.printf("Queried position: id=%d, lat=%.6f, lon=%.6f, time=%s%n",
+                    p.getDeviceId(),
+                    p.getLatitude(),
+                    p.getLongitude(),
+                    p.getFixTime()
+            );
+        }
     }
 }
